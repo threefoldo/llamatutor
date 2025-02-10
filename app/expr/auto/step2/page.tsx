@@ -33,14 +33,14 @@ const VehicleSelection: NextPage = () => {
     {
       id: 1,
       name: 'Used Honda Civic',
-      imageUrl: '/honda_civic.jpg', // Ensure you have this image in your public directory
+      imageUrl: '/imgs/honda_civic.jpg', // Ensure you have this image in your public directory
       price: 15000,
       description: 'A reliable and fuel-efficient used car.'
     },
     {
       id: 2,
       name: 'New BMW 3 Series',
-      imageUrl: '/bmw_3_series.jpg', // Ensure you have this image in your public directory
+      imageUrl: '/imgs/bmw_3_series.jpg', // Ensure you have this image in your public directory
       price: 45000,
       description: 'A luxurious and sporty new car.'
     }

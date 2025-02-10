@@ -7,6 +7,7 @@ interface Vehicle {
     id: string;
     name: string;
     price: number;
+    imageUrl: string;
 }
 
 interface LoanDetails {
@@ -50,9 +51,9 @@ const CarPurchaseOptions = () => {
 
     // Placeholder data for vehicle options
     const vehicleOptions: Vehicle[] = [
-        { id: 'civic', name: 'Honda Civic', price: 25000 },
-        { id: 'bmw', name: 'BMW 3 Series', price: 45000 },
-        { id: 'tesla', name: 'Tesla Model 3', price: 40000 },
+        { id: 'civic', name: 'Honda Civic', price: 25000, imageUrl: '/imgs/honda_civic.jpg' },
+        { id: 'bmw', name: 'BMW 3 Series', price: 45000, imageUrl: '/imgs/bmw_3_series.jpg' },
+        { id: 'tesla', name: 'Tesla Model 3', price: 40000, imageUrl: '/imgs/tesla_model3.jpg' },
     ];
 
     // Placeholder data for financial calculations (replace with actual logic)
@@ -180,7 +181,7 @@ const CarPurchaseOptions = () => {
                                 <span className="text-base">{vehicle.name}</span>
                             </label>
                             <p>Price: ${vehicle.price.toLocaleString()}</p>
-                            <div className="[Image Here] h-24 w-full bg-gray-200 rounded"></div>
+                            <img src={vehicle.imageUrl} alt={vehicle.name} className="h-48 w-full bg-gray-200 rounded" />
                         </div>
                     ))}
                 </div>

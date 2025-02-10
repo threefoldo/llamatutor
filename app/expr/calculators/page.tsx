@@ -12,27 +12,27 @@ const calculators: Calculator[] = [
   {
     name: 'Loan Amortization Calculator',
     description: 'Calculate your loan amortization schedule.',
-    href: '/calculators/loan-amortization',
+    href: '/expr/calculators/loan_amortization',
   },
   {
     name: 'Interest Calculation Calculator',
     description: 'Calculate interest earned or paid.',
-    href: '/calculators/interest-calculation',
+    href: '/expr/calculators/interest',
   },
   {
     name: 'Total Cost of Ownership Calculator',
     description: 'Calculate the total cost of owning a vehicle.',
-    href: '/calculators/total-cost-of-ownership',
+    href: '/expr/calculators/total_cost',
   },
-    {
+  {
     name: 'Depreciation Calculator',
     description: 'Calculate the depreciation of a car.',
-    href: '/calculators/depreciation',
+    href: '/expr/calculators/depreciation',
   },
   {
     name: 'Lease vs. Buy Calculator',
     description: 'Compare the costs of leasing versus buying a car.',
-    href: '/calculators/lease-vs-buy',
+    href: '/expr/calculators/lease_buy',
   },
 ];
 
