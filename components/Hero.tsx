@@ -4,6 +4,7 @@ import desktopImg from "../public/desktop-screenshot.png";
 import mobileImg from "../public/screenshot-mobile.png";
 import InitialInputArea from "./InitialInputArea";
 import { suggestions } from "@/utils/utils";
+import Link from "next/link";
 
 type THeroProps = {
   promptValue: string;
@@ -46,18 +47,21 @@ const Hero: FC<THeroProps> = ({
           </span>
         </a>
         <h2 className="mt-2 bg-custom-gradient bg-clip-text text-center text-4xl font-medium tracking-tight text-gray-900 sm:text-6xl">
-          Your Personal{" "}
+          Personal Finance{" "}
           <span className="bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text font-bold text-transparent">
             Tutor
           </span>
         </h2>
         <p className="mt-4 text-balance text-center text-sm sm:text-base">
-          Enter a topic you want to learn about along with the education level
-          you want to be taught at and generate a personalized tutor tailored to
-          you!
+          Learn and practice financial skills in realistic car-buying scenarios.
+          Take on the role of a buyer, banker, or dealer and make informed
+          decisions.
         </p>
+        <Link href="/register" className="inline-block bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          Get Started
+        </Link>
 
-        <div className="mt-4 w-full pb-6">
+        {/* <div className="mt-4 w-full pb-6">
           <InitialInputArea
             promptValue={promptValue}
             handleInitialChat={handleInitialChat}
@@ -66,9 +70,9 @@ const Hero: FC<THeroProps> = ({
             ageGroup={ageGroup}
             setAgeGroup={setAgeGroup}
           />
-        </div>
+        </div> */}
 
-        <div className="flex flex-wrap items-center justify-center gap-2.5 pb-[30px] lg:flex-nowrap lg:justify-normal">
+        {/* <div className="flex flex-wrap items-center justify-center gap-2.5 pb-[30px] lg:flex-nowrap lg:justify-normal">
           {suggestions.map((item) => (
             <div
               className="flex h-[35px] cursor-pointer items-center justify-center gap-[5px] rounded border border-solid border-[#C1C1C1] px-2.5 py-2 transition hover:bg-gray-200"
@@ -87,7 +91,7 @@ const Hero: FC<THeroProps> = ({
               </span>
             </div>
           ))}
-        </div>
+        </div> 
         <p className="text-center text-sm font-light leading-[normal] text-[#1B1B16]">
           Fully open source!{" "}
           <span className="text-sm font-medium underline">
@@ -99,7 +103,7 @@ const Hero: FC<THeroProps> = ({
               Star it on github.
             </a>
           </span>
-        </p>
+        </p>*/}
       </div>
       <div className="mx-auto max-w-7xl">
         <Image
