@@ -44,6 +44,7 @@ export default function AutoFinancePage() {
         {
           id: "loan-amount-calculator",
           title: "Loan Amount Calculator",
+          image: "/imgs/tesla_model3.jpg",
           description: "Determine the final loan amount accounting for all factors in the purchasing process",
           path: "/auto/level2/loan-amount-calculator",
           skills: ["Document Analysis", "Fee Calculation", "Trade-in Valuation"]
@@ -51,6 +52,7 @@ export default function AutoFinancePage() {
         {
           id: "total-cost-calculator",
           title: "Total Cost Calculator",
+          image: "/imgs/bmw_3_series.jpg",
           description: "Calculate the comprehensive lifetime cost of vehicle ownership",
           path: "/auto/level2/total-cost-calculator",
           skills: ["Ownership Cost Analysis", "Long-term Planning", "Financial Projection"]
@@ -58,6 +60,7 @@ export default function AutoFinancePage() {
         {
           id: "monthly-payment-with-fees",
           title: "Monthly Payment with Fees",
+          image: "/imgs/honda_civic.jpg",
           description: "Recalculate monthly payments integrating all fees and dealer add-ons",
           path: "/auto/level2/monthly-payment-with-fees",
           skills: ["Advertisement Analysis", "Fee Integration", "Payment Comparison"]
@@ -123,6 +126,37 @@ export default function AutoFinancePage() {
           path: "/auto/step4/lease-vs-buy-recommendation",
           image: "/imgs/honda_civic.jpg",
           skills: ["Comparative Analysis", "Long-term Planning", "Financial Decision-Making"]
+        },
+      ],
+    },
+    {
+      level: 5,
+      title: "Advanced Financing Concepts",
+      description: "Evaluate specialized auto financing structures and insurance products",
+      miniGames: [
+        {
+          id: "balloon-payment-analysis",
+          title: "Balloon Payment Analysis",
+          description: "Analyze the financial implications of balloon loans with deferred principal payments",
+          path: "/auto/step5/balloon-payment-analysis",
+          image: "/imgs/bmw_3_series.jpg",
+          skills: ["Payment Structure Analysis", "Cash Flow Management", "Loan Comparison"]
+        },
+        {
+          id: "gap-insurance-evaluation",
+          title: "GAP Insurance Evaluation",
+          description: "Determine the value of GAP insurance by analyzing the depreciation curve versus loan balance",
+          path: "/auto/step5/gap-insurance-evaluation",
+          image: "/imgs/tesla_model3.jpg",
+          skills: ["Risk Assessment", "Depreciation Analysis", "Insurance Value Calculation"]
+        },
+        {
+          id: "credit-score-impact",
+          title: "Credit Score Impact Analysis",
+          description: "Calculate the financial benefits of improving your credit score before financing a vehicle",
+          path: "/auto/step5/credit-score-impact",
+          image: "/imgs/honda_civic.jpg",
+          skills: ["Interest Rate Analysis", "Payment Comparison", "Long-term Savings Calculation"]
         },
       ],
     },
