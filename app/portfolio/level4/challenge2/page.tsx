@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 
 export default function ESGIntegration() {
@@ -65,14 +65,14 @@ export default function ESGIntegration() {
 
   // Individual companies with strong ESG profiles
   const esgCompanies = [
-    { id: 'MSFT', company: 'Microsoft Corp.', ticker: 'MSFT', esgScore: 8.5, carbon: 12, sector: 'Technology', dividendYield: 0.8, allocation: 0 },
-    { id: 'NVDA', company: 'Nvidia Corp.', ticker: 'NVDA', esgScore: 7.8, carbon: 5, sector: 'Technology', dividendYield: 0.1, allocation: 0 },
-    { id: 'UL', company: 'Unilever PLC', ticker: 'UL', esgScore: 8.7, carbon: 48, sector: 'Consumer Staples', dividendYield: 3.5, allocation: 0 },
-    { id: 'VWDRY', company: 'Vestas Wind Systems', ticker: 'VWDRY', esgScore: 9.2, carbon: 2, sector: 'Industrials', dividendYield: 0.3, allocation: 0 },
-    { id: 'WM', company: 'Waste Management Inc.', ticker: 'WM', esgScore: 8.1, carbon: 310, sector: 'Industrials', dividendYield: 1.5, allocation: 0 },
-    { id: 'NEE', company: 'NextEra Energy', ticker: 'NEE', esgScore: 8.3, carbon: 175, sector: 'Utilities', dividendYield: 2.5, allocation: 0 },
-    { id: 'AWK', company: 'American Water Works', ticker: 'AWK', esgScore: 8.0, carbon: 145, sector: 'Utilities', dividendYield: 1.8, allocation: 0 },
-    { id: 'HASI', company: 'Hannon Armstrong', ticker: 'HASI', esgScore: 9.0, carbon: 3, sector: 'Financials', dividendYield: 5.8, allocation: 0 }
+    { id: 'MSFT', company: 'Microsoft Corp.', ticker: 'MSFT', esgScore: 8.5, carbon: 12, sector: 'Technology', dividendYield: 0.8, return: 8.2, expense: 0.0, allocation: 0 },
+    { id: 'NVDA', company: 'Nvidia Corp.', ticker: 'NVDA', esgScore: 7.8, carbon: 5, sector: 'Technology', dividendYield: 0.1, return: 9.8, expense: 0.0, allocation: 0 },
+    { id: 'UL', company: 'Unilever PLC', ticker: 'UL', esgScore: 8.7, carbon: 48, sector: 'Consumer Staples', dividendYield: 3.5, return: 6.4, expense: 0.0, allocation: 0 },
+    { id: 'VWDRY', company: 'Vestas Wind Systems', ticker: 'VWDRY', esgScore: 9.2, carbon: 2, sector: 'Industrials', dividendYield: 0.3, return: 10.5, expense: 0.0, allocation: 0 },
+    { id: 'WM', company: 'Waste Management Inc.', ticker: 'WM', esgScore: 8.1, carbon: 310, sector: 'Industrials', dividendYield: 1.5, return: 7.6, expense: 0.0, allocation: 0 },
+    { id: 'NEE', company: 'NextEra Energy', ticker: 'NEE', esgScore: 8.3, carbon: 175, sector: 'Utilities', dividendYield: 2.5, return: 6.9, expense: 0.0, allocation: 0 },
+    { id: 'AWK', company: 'American Water Works', ticker: 'AWK', esgScore: 8.0, carbon: 145, sector: 'Utilities', dividendYield: 1.8, return: 5.8, expense: 0.0, allocation: 0 },
+    { id: 'HASI', company: 'Hannon Armstrong', ticker: 'HASI', esgScore: 9.0, carbon: 3, sector: 'Financials', dividendYield: 5.8, return: 8.9, expense: 0.0, allocation: 0 }
   ];
 
   // Create a flat list of all investment options
@@ -104,15 +104,21 @@ export default function ESGIntegration() {
   const [submitted, setSubmitted] = useState(false);
   const [feedback, setFeedback] = useState('');
 
+  // Define message interface
+  interface ChatMessage {
+    role: 'assistant' | 'user';
+    content: string;
+  }
+
   // For the chatbot
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: "Welcome to the ESG Integration challenge! I'm here to help you redesign Westridge University's $200M endowment portfolio to incorporate sustainability principles. What would you like to know about ESG integration or investment strategies?" }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Predefined AI responses based on keywords
-  const aiResponses = {
+  const aiResponses: Record<string, string> = {
     'esg': "ESG stands for Environmental, Social, and Governance - criteria used to evaluate a company's sustainability and ethical impact. Environmental factors include climate impact and resource use. Social factors cover employee relations and community impact. Governance addresses corporate leadership, executive pay, and shareholder rights.",
     'negative screening': "Negative screening excludes companies or sectors with poor ESG ratings or involvement in controversial activities like fossil fuels, tobacco, or weapons. It's the oldest form of ESG investing but doesn't necessarily optimize for positive impact. For Westridge University, you might consider screening out the worst carbon emitters.",
     'positive tilt': "Positive tilting overweights companies with strong ESG ratings while maintaining similar sector exposures as conventional indices. This approach helps improve portfolio ESG metrics while minimizing tracking error. Consider using this approach with core allocations like EFIV or SNPE.",
@@ -125,32 +131,8 @@ export default function ESGIntegration() {
     'help': "I can help with: 1) Explaining ESG integration approaches like negative screening or positive tilting, 2) Understanding ESG metrics and their importance, 3) Balancing ESG improvements with financial objectives, or 4) Discussing specific investment options. What would you like to know?"
   };
 
-  // Calculate portfolio metrics whenever allocation changes
-  useEffect(() => {
-    calculatePortfolioMetrics();
-  }, [portfolioData]);
-
-  useEffect(() => {
-    // Scroll to the bottom of the messages container
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Handler for allocation changes
-  const handleAllocationChange = (id, value) => {
-    const newValue = parseInt(value) || 0;
-    const updatedPortfolio = portfolioData.map(inv => 
-      inv.id === id ? { ...inv, allocation: newValue } : inv
-    );
-    
-    setPortfolioData(updatedPortfolio);
-    
-    // Update total allocation
-    const total = updatedPortfolio.reduce((sum, inv) => sum + inv.allocation, 0);
-    setTotalAllocation(total);
-  };
-
   // Calculate portfolio metrics
-  const calculatePortfolioMetrics = () => {
+  const calculatePortfolioMetrics = useCallback(() => {
     if (totalAllocation === 0) {
       setPortfolioReturn(0);
       setPortfolioRisk(0);
@@ -218,6 +200,30 @@ export default function ESGIntegration() {
     setWeightedExpense(expense);
     setPortfolioEsgScore(esgScore);
     setPortfolioCarbonIntensity(carbonIntensity);
+  }, [portfolioData, totalAllocation]);
+  
+  // Calculate portfolio metrics whenever allocation changes
+  useEffect(() => {
+    calculatePortfolioMetrics();
+  }, [calculatePortfolioMetrics]);
+
+  useEffect(() => {
+    // Scroll to the bottom of the messages container
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Handler for allocation changes
+  const handleAllocationChange = (id: string, value: string) => {
+    const newValue = parseInt(value) || 0;
+    const updatedPortfolio = portfolioData.map(inv => 
+      inv.id === id ? { ...inv, allocation: newValue } : inv
+    );
+    
+    setPortfolioData(updatedPortfolio);
+    
+    // Update total allocation
+    const total = updatedPortfolio.reduce((sum, inv) => sum + inv.allocation, 0);
+    setTotalAllocation(total);
   };
 
   // Submit portfolio
@@ -285,12 +291,13 @@ export default function ESGIntegration() {
     }
   };
 
-  const handleChatSubmit = (e) => {
+  const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!currentMessage.trim()) return;
     
     // Add user message to chat
-    const updatedMessages = [...messages, { role: 'user', content: currentMessage }];
+    const newUserMessage: ChatMessage = { role: 'user', content: currentMessage };
+    const updatedMessages = [...messages, newUserMessage];
     setMessages(updatedMessages);
     
     // Generate AI response based on keywords in user message
@@ -307,7 +314,8 @@ export default function ESGIntegration() {
     
     // Add AI response with a small delay to feel more natural
     setTimeout(() => {
-      setMessages([...updatedMessages, { role: 'assistant', content: aiResponse }]);
+      const newAssistantMessage: ChatMessage = { role: 'assistant', content: aiResponse };
+      setMessages([...updatedMessages, newAssistantMessage]);
     }, 500);
     
     setCurrentMessage('');
@@ -373,7 +381,7 @@ export default function ESGIntegration() {
               <div>
                 <h4 className="text-sm font-semibold text-gray-700">ESG Directive</h4>
                 <p className="text-sm text-gray-700">
-                  "Incorporate sustainability principles while maintaining financial performance"
+                  &quot;Incorporate sustainability principles while maintaining financial performance&quot;
                 </p>
               </div>
             </div>
@@ -774,7 +782,7 @@ export default function ESGIntegration() {
                     </svg>
                   </div>
                   <h4 className="font-medium text-gray-800 mt-2">Sustainability Strategist Badge Earned!</h4>
-                  <p className="text-sm text-gray-600 mt-1">You've mastered ESG integration</p>
+                  <p className="text-sm text-gray-600 mt-1">You&apos;ve mastered ESG integration</p>
                   
                   <div className="mt-6">
                     <Link href="/portfolio" className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md">

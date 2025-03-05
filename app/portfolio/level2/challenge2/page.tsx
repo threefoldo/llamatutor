@@ -4,8 +4,21 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
+// Define the type for a portfolio investment
+interface PortfolioInvestment {
+  id: string;
+  name: string;
+  ticker: string;
+  target: number;
+  current: number;
+  value: number;
+  drift: number;
+  selected: boolean;
+  trade: number;
+}
+
 // Mock data for actual implementation
-const portfolioInvestments = [
+const portfolioInvestments: PortfolioInvestment[] = [
   { id: 'VOO', name: 'Vanguard S&P 500 ETF', ticker: 'VOO', target: 30, current: 37.5, value: 375000, drift: 7.5, selected: false, trade: 0 },
   { id: 'IWM', name: 'iShares Russell 2000 ETF', ticker: 'IWM', target: 15, current: 18.3, value: 183000, drift: 3.3, selected: false, trade: 0 },
   { id: 'EFA', name: 'iShares MSCI EAFE ETF', ticker: 'EFA', target: 15, current: 13.4, value: 134000, drift: -1.6, selected: false, trade: 0 },
@@ -36,7 +49,7 @@ export default function MasteringRebalancing() {
     { role: 'assistant', content: "Hello! I'm your Investment Guru AI. I can help you develop a cost-effective rebalancing strategy for the Anderson Community Foundation's portfolio. What would you like to know about portfolio drift or rebalancing approaches?" }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Predefined AI responses based on keywords
   const aiResponses = {
@@ -73,8 +86,8 @@ export default function MasteringRebalancing() {
     setTotalCost(totalFlatFee + totalPercentageFee);
   };
 
-  const handleTradeChange = (id, value) => {
-    const tradeValue = parseInt(value) || 0;
+  const handleTradeChange = (id: string, value: string | number) => {
+    const tradeValue = parseInt(value.toString()) || 0;
     
     const updatedPortfolio = portfolioData.map(inv => 
       inv.id === id ? { ...inv, trade: tradeValue } : inv
@@ -83,7 +96,7 @@ export default function MasteringRebalancing() {
     setPortfolioData(updatedPortfolio);
   };
 
-  const toggleSelection = (id) => {
+  const toggleSelection = (id: string) => {
     const updatedPortfolio = portfolioData.map(inv => 
       inv.id === id ? { ...inv, selected: !inv.selected } : inv
     );
@@ -190,7 +203,7 @@ export default function MasteringRebalancing() {
     }
   };
 
-  const handleChatSubmit = (e) => {
+  const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentMessage.trim()) return;
     
@@ -274,7 +287,7 @@ export default function MasteringRebalancing() {
           <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
             <h4 className="text-sm font-semibold text-yellow-800 mb-2">Rebalancing Policy:</h4>
             <p className="text-sm text-gray-700 italic">
-              "Rebalance when any position drifts more than 5% from target."
+              &quot;Rebalance when any position drifts more than 5% from target.&quot;
             </p>
           </div>
         </div>
@@ -293,7 +306,7 @@ export default function MasteringRebalancing() {
                   disabled={submitted}
                   className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-md"
                 >
-                  <option value="threshold">Threshold Rebalancing (>5% drift)</option>
+                  <option value="threshold">Threshold Rebalancing ({'>'}5% drift)</option>
                   <option value="full">Full Rebalancing (all positions)</option>
                 </select>
               </div>
@@ -531,7 +544,7 @@ export default function MasteringRebalancing() {
                     </svg>
                   </div>
                   <h4 className="font-medium text-gray-800 mt-2">Rebalancing Guru Title Earned!</h4>
-                  <p className="text-sm text-gray-600 mt-1">You've mastered cost-effective portfolio rebalancing</p>
+                  <p className="text-sm text-gray-600 mt-1">You&apos;ve mastered cost-effective portfolio rebalancing</p>
                   
                   <div className="mt-6">
                     <Link href="/portfolio/level3/challenge1" className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md">

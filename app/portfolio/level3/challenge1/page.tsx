@@ -41,7 +41,7 @@ export default function DownsideRiskDetective() {
         SPY: -33.9, QQQ: -28.0, IWM: -40.5, VEA: -33.0, EEM: -31.5,
         AAPL: -24.0, AMZN: -12.0, MSFT: -20.0, 'BRK.B': -30.0,
         LQD: -12.5, BND: -0.5
-      }
+      } as Record<string, number>
     },
     { 
       id: 'tech-bubble', 
@@ -52,7 +52,7 @@ export default function DownsideRiskDetective() {
         SPY: -27.2, QQQ: -56.0, IWM: -22.0, VEA: -24.0, EEM: -26.0,
         AAPL: -58.0, AMZN: -70.0, MSFT: -60.0, 'BRK.B': -6.0,
         LQD: 8.0, BND: 10.0
-      }
+      } as Record<string, number>
     },
     { 
       id: 'black-monday', 
@@ -63,7 +63,7 @@ export default function DownsideRiskDetective() {
         SPY: -22.6, QQQ: -24.0, IWM: -26.0, VEA: -24.0, EEM: -28.0,
         AAPL: -36.0, AMZN: 0, MSFT: -31.0, 'BRK.B': -18.0,
         LQD: 3.0, BND: 4.0
-      }
+      } as Record<string, number>
     }
   ];
 
@@ -76,19 +76,19 @@ export default function DownsideRiskDetective() {
   const [valueAtRisk, setValueAtRisk] = useState(0);
   const [conditionalVaR, setConditionalVaR] = useState(0);
   const [portfolioValue, setPortfolioValue] = useState(75000000);
-  const [stressTestResults, setStressTestResults] = useState({});
-  const [riskContributions, setRiskContributions] = useState([]);
+  const [stressTestResults, setStressTestResults] = useState<Record<string, { percentImpact: number; dollarImpact: number }>>({});
+  const [riskContributions, setRiskContributions] = useState<Array<{ id: string; name: string; allocation: number; riskContribution: number; percentOfRisk: number; }>>([]);
   const [submitted, setSubmitted] = useState(false);
   const [explanation, setExplanation] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [proposedChanges, setProposedChanges] = useState([]);
+  const [proposedChanges, setProposedChanges] = useState<Array<{id: string; name: string; changeType: 'increase' | 'decrease'; amount: number}>>([]);
   
   // For the chatbot
   const [messages, setMessages] = useState([
     { role: 'assistant', content: "Welcome to the Downside Risk Detective challenge! I'm here to help you analyze and mitigate the risk profile of the Freeman Foundation's portfolio. What would you like to know about downside risk metrics or stress testing?" }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Predefined AI responses for the chatbot
   const aiResponses = {
@@ -115,8 +115,8 @@ export default function DownsideRiskDetective() {
   }, [messages]);
 
   // Handler for allocation changes
-  const handleAllocationChange = (id, value) => {
-    const newValue = parseInt(value) || 0;
+  const handleAllocationChange = (id: string, value: string | number) => {
+    const newValue = parseInt(value.toString()) || 0;
     const updatedPortfolio = portfolioData.map(inv => 
       inv.id === id ? { ...inv, allocation: newValue } : inv
     );
@@ -179,7 +179,7 @@ export default function DownsideRiskDetective() {
 
   // Calculate stress test results
   const calculateStressTests = () => {
-    const results = {};
+    const results: Record<string, any> = {};
     
     crisisScenarios.forEach(scenario => {
       let portfolioImpact = 0;
@@ -240,8 +240,9 @@ export default function DownsideRiskDetective() {
   };
 
   // Add a proposed change
-  const addProposedChange = (assetId, changeType, amount) => {
+  const addProposedChange = (assetId: string, changeType: 'increase' | 'decrease', amount: number) => {
     const asset = portfolioData.find(a => a.id === assetId);
+    if (!asset) return;
     const newProposedChange = {
       id: assetId,
       name: asset.name,
@@ -310,11 +311,13 @@ export default function DownsideRiskDetective() {
     const originalWorstScenario = crisisScenarios.find(s => s.id === worstScenario);
     let originalImpact = 0;
     
-    investments.forEach(asset => {
-      const weight = asset.allocation / 100;
-      const assetReturn = originalWorstScenario.assetReturns[asset.id] || 0;
-      originalImpact += weight * assetReturn;
-    });
+    if (originalWorstScenario) {
+      investments.forEach(asset => {
+        const weight = asset.allocation / 100;
+        const assetReturn = originalWorstScenario.assetReturns[asset.id] || 0;
+        originalImpact += weight * assetReturn;
+      });
+    }
     
     const improvementInWorstCase = stressTestResults[worstScenario].percentImpact - originalImpact;
     
@@ -346,7 +349,7 @@ export default function DownsideRiskDetective() {
     }
   };
 
-  const handleChatSubmit = (e) => {
+  const handleChatSubmit = (e: any) => {
     e.preventDefault();
     if (!currentMessage.trim()) return;
     
@@ -428,7 +431,7 @@ export default function DownsideRiskDetective() {
             <div>
               <h4 className="text-sm font-semibold text-gray-700">Risk Statement</h4>
               <p className="text-sm text-gray-700">
-                "Willing to accept higher volatility for higher returns, but concerned about extreme losses that could impact annual grant distributions."
+                &quot;Willing to accept higher volatility for higher returns, but concerned about extreme losses that could impact annual grant distributions.&quot;
               </p>
             </div>
           </div>
@@ -720,7 +723,7 @@ export default function DownsideRiskDetective() {
                     </svg>
                   </div>
                   <h4 className="font-medium text-gray-800 mt-2">Downside Detective Badge Earned!</h4>
-                  <p className="text-sm text-gray-600 mt-1">You've mastered risk analysis and mitigation</p>
+                  <p className="text-sm text-gray-600 mt-1">You&apos;ve mastered risk analysis and mitigation</p>
                   
                   <div className="mt-6">
                     <Link href="/portfolio/level3/challenge2" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md">

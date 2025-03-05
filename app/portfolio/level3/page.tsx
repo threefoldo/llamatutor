@@ -25,7 +25,7 @@ export default function PortfolioLevel3() {
         <div className="bg-white p-6 rounded-lg shadow-md mb-8">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Welcome to Advanced Risk Analysis</h2>
           <p className="text-gray-600 mb-4">
-            In Level 3, you'll tackle more sophisticated challenges that focus on analyzing and managing portfolio risk, 
+            In Level 3, you&apos;ll tackle more sophisticated challenges that focus on analyzing and managing portfolio risk, 
             understanding factor attribution, and making better investment decisions with advanced metrics.
           </p>
           <p className="text-gray-600 mb-4">

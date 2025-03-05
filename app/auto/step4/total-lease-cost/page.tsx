@@ -13,7 +13,7 @@ interface LeaseDetail {
   category: string;
 }
 
-const TotalLeaseCost: React.FC = () => {
+export default function Page() {
   // Initial lease terms
   const [monthlyPayment, setMonthlyPayment] = useState<number>(399);
   const [leaseTerm, setLeaseTerm] = useState<number>(36);
@@ -309,8 +309,8 @@ const TotalLeaseCost: React.FC = () => {
                   <div className={`p-3 rounded-md ${checkAnswer() ? 'bg-green-100' : 'bg-red-100'}`}>
                     <p className={`text-sm ${checkAnswer() ? 'text-green-800' : 'text-red-800'}`}>
                       {checkAnswer() 
-                        ? 'Correct! You've accurately calculated the total cost of the lease.' 
-                        : 'That's not quite right. Check your calculations and try again.'}
+                        ? 'Correct! You&apos;ve accurately calculated the total cost of the lease.' 
+                        : 'That&apos;s not quite right. Check your calculations and try again.'}
                     </p>
                   </div>
                 )}
@@ -396,7 +396,7 @@ const TotalLeaseCost: React.FC = () => {
         <h2 className="text-xl font-semibold mb-4">Lease Cost Considerations</h2>
         <ul className="list-disc pl-5 space-y-2">
           <li>Monthly lease payments are typically lower than loan payments for the same vehicle.</li>
-          <li>Leases include multiple fees that aren't part of a purchase transaction.</li>
+          <li>Leases include multiple fees that aren&apos;t part of a purchase transaction.</li>
           <li>Exceeding mileage limits can significantly increase the total cost of leasing.</li>
           <li>You build no equity in a leased vehicle, unlike with financing a purchase.</li>
           <li>At the end of the lease, you must return the vehicle unless you exercise a purchase option.</li>
@@ -405,6 +405,4 @@ const TotalLeaseCost: React.FC = () => {
       </div>
     </div>
   );
-};
-
-export default TotalLeaseCost;
+}

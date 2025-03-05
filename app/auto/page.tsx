@@ -4,7 +4,26 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function AutoFinancePage() {
-  const levels = [
+  // Define the type for a game
+  interface MiniGame {
+    id: string;
+    title: string;
+    description: string;
+    path: string;
+    image: string;
+    skills: string[];
+    comingSoon?: boolean;
+  }
+
+  // Define the type for a level
+  interface GameLevel {
+    level: number;
+    title: string;
+    description: string;
+    miniGames: MiniGame[];
+  }
+  
+  const levels: GameLevel[] = [
     {
       level: 1,
       title: "Loan Fundamentals",

@@ -4,9 +4,21 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
+interface Investment {
+  id: string;
+  name: string;
+  ticker: string;
+  return: number;
+  stdDev: number;
+  beta: number;
+  aum: string;
+  sharpe: number;
+  treynor: number;
+}
+
 export default function RiskAdjustedDecisions() {
   // Investment options with their data
-  const investments = [
+  const investments: Investment[] = [
     { id: 'ARKK', name: 'ARK Innovation ETF', ticker: 'ARKK', return: 14.2, stdDev: 32.5, beta: 1.8, aum: '$8.2B', sharpe: 0, treynor: 0 },
     { id: 'FCNTX', name: 'Fidelity Contrafund', ticker: 'FCNTX', return: 11.3, stdDev: 16.2, beta: 1.1, aum: '$98.5B', sharpe: 0, treynor: 0 },
     { id: 'AMZN', name: 'Amazon.com, Inc.', ticker: 'AMZN', return: 15.7, stdDev: 25.3, beta: 1.4, aum: 'N/A', sharpe: 0, treynor: 0 },
@@ -17,7 +29,7 @@ export default function RiskAdjustedDecisions() {
 
   const [investmentData, setInvestmentData] = useState(investments);
   const [riskFreeRate, setRiskFreeRate] = useState(1.5);
-  const [selectedInvestments, setSelectedInvestments] = useState([]);
+  const [selectedInvestments, setSelectedInvestments] = useState<string[]>([]);
   const [justification, setJustification] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -54,12 +66,12 @@ export default function RiskAdjustedDecisions() {
     setInvestmentData(updatedData);
   };
 
-  const handleRiskFreeRateChange = (e) => {
+  const handleRiskFreeRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newRate = parseFloat(e.target.value) || 0;
     setRiskFreeRate(newRate);
   };
 
-  const toggleInvestmentSelection = (id) => {
+  const toggleInvestmentSelection = (id: string) => {
     if (selectedInvestments.includes(id)) {
       setSelectedInvestments(selectedInvestments.filter(invId => invId !== id));
     } else {
@@ -270,7 +282,7 @@ export default function RiskAdjustedDecisions() {
               <div className="flex flex-wrap gap-2 mb-4">
                 {selectedInvestments.map(id => {
                   const inv = investmentData.find(inv => inv.id === id);
-                  return (
+                  return inv ? (
                     <div key={id} className="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm">
                       {inv.ticker}
                       {!submitted && (
@@ -285,7 +297,7 @@ export default function RiskAdjustedDecisions() {
                         </button>
                       )}
                     </div>
-                  )
+                  ) : null
                 })}
                 {selectedInvestments.length === 0 && (
                   <div className="text-sm text-gray-500 italic">Select 1-2 investments with the best risk-adjusted performance</div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 
 export default function AlternativeInvestments() {
@@ -20,7 +20,9 @@ export default function AlternativeInvestments() {
   ];
 
   // Simplified correlation matrix (would be more comprehensive in a real application)
-  const correlationMatrix = Array(investments.length).fill().map(() => Array(investments.length).fill(0));
+  const correlationMatrix: number[][] = Array.from({ length: investments.length }, () => 
+    Array.from({ length: investments.length }, () => 0)
+  );
 
   // Fill the diagonal with 1s (each asset perfectly correlated with itself)
   for (let i = 0; i < investments.length; i++) {
@@ -61,15 +63,21 @@ export default function AlternativeInvestments() {
   const [submitted, setSubmitted] = useState(false);
   const [feedback, setFeedback] = useState('');
 
+  // Define message interface
+  interface ChatMessage {
+    role: 'assistant' | 'user';
+    content: string;
+  }
+
   // For the chatbot
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: "Welcome to the Alternative Investments challenge! I'm here to help you evaluate and allocate alternative investments for the Westman Family Office. What would you like to know about alternative investments, their characteristics, or portfolio construction?" }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Predefined AI responses based on keywords
-  const aiResponses = {
+  const aiResponses: Record<string, string> = {
     'alternative': "Alternative investments are assets that fall outside of conventional investment categories like stocks, bonds, and cash. They include private equity, hedge funds, real estate, commodities, and other specialized strategies. They typically offer different risk-return profiles and lower correlations with traditional markets.",
     'liquidity': "Liquidity refers to how quickly an investment can be sold without affecting its price. Traditional ETFs like VOO and BND offer high liquidity, while alternative investments often have medium to low liquidity. The Westman Family Office needs to maintain at least 85% of the portfolio in investments rated 'Medium' liquidity or better.",
     'correlation': "Correlation measures how investments move in relation to each other. Lower correlations between assets provide diversification benefits. Alternative investments often have lower correlations with traditional stocks and bonds, which can help reduce overall portfolio volatility.",
@@ -82,19 +90,12 @@ export default function AlternativeInvestments() {
     'help': "I can help with: 1) Explaining characteristics of different alternative investments, 2) Discussing potential benefits and drawbacks of including alternatives, 3) Providing insights on portfolio construction with alternatives, 4) Explaining the impact of fees and liquidity constraints. What would you like to know?"
   };
 
-  // Calculate portfolio metrics whenever allocation changes
-  useEffect(() => {
-    calculatePortfolioMetrics();
-  }, [portfolioData]);
-
-  useEffect(() => {
-    // Scroll to the bottom of the messages container
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   // Handler for allocation changes
-  const handleAllocationChange = (id, value) => {
-    const newValue = Math.min(parseInt(value) || 0, portfolioData.find(inv => inv.id === id).max);
+  const handleAllocationChange = (id: string, value: string) => {
+    const investment = portfolioData.find(inv => inv.id === id);
+    if (!investment) return;
+    
+    const newValue = Math.min(parseInt(value) || 0, investment.max);
     const updatedPortfolio = portfolioData.map(inv => 
       inv.id === id ? { ...inv, allocation: newValue } : inv
     );
@@ -107,7 +108,7 @@ export default function AlternativeInvestments() {
   };
 
   // Calculate portfolio metrics
-  const calculatePortfolioMetrics = () => {
+  const calculatePortfolioMetrics = useCallback(() => {
     if (totalAllocation === 0) {
       setPortfolioReturn(0);
       setPortfolioRisk(0);
@@ -174,7 +175,17 @@ export default function AlternativeInvestments() {
       low: lowLiquidity 
     });
     setAlternativeAllocation(altAllocation);
-  };
+  }, [correlationMatrix, portfolioData, totalAllocation]);
+
+  // Calculate portfolio metrics whenever allocation changes
+  useEffect(() => {
+    calculatePortfolioMetrics();
+  }, [calculatePortfolioMetrics]);
+
+  useEffect(() => {
+    // Scroll to the bottom of the messages container
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   // Submit portfolio
   const handleSubmit = () => {
@@ -227,12 +238,13 @@ export default function AlternativeInvestments() {
     }
   };
 
-  const handleChatSubmit = (e) => {
+  const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!currentMessage.trim()) return;
     
     // Add user message to chat
-    const updatedMessages = [...messages, { role: 'user', content: currentMessage }];
+    const newUserMessage: ChatMessage = { role: 'user', content: currentMessage };
+    const updatedMessages = [...messages, newUserMessage];
     setMessages(updatedMessages);
     
     // Generate AI response based on keywords in user message
@@ -249,7 +261,8 @@ export default function AlternativeInvestments() {
     
     // Add AI response with a small delay to feel more natural
     setTimeout(() => {
-      setMessages([...updatedMessages, { role: 'assistant', content: aiResponse }]);
+      const newAssistantMessage: ChatMessage = { role: 'assistant', content: aiResponse };
+      setMessages([...updatedMessages, newAssistantMessage]);
     }, 500);
     
     setCurrentMessage('');
@@ -323,7 +336,7 @@ export default function AlternativeInvestments() {
               <div>
                 <h4 className="text-sm font-semibold text-gray-700">Investment Objectives</h4>
                 <p className="text-sm text-gray-700">
-                  "Long-term capital preservation and growth with inflation protection"
+                  &quot;Long-term capital preservation and growth with inflation protection&quot;
                 </p>
               </div>
               
@@ -641,7 +654,7 @@ export default function AlternativeInvestments() {
                     </svg>
                   </div>
                   <h4 className="font-medium text-gray-800 mt-2">Alternative Alchemist Badge Earned!</h4>
-                  <p className="text-sm text-gray-600 mt-1">You've mastered alternative investment allocation</p>
+                  <p className="text-sm text-gray-600 mt-1">You&apos;ve mastered alternative investment allocation</p>
                   
                   <div className="mt-6">
                     <Link href="/portfolio/level4/challenge2" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">

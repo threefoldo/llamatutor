@@ -25,7 +25,7 @@ export default function PortfolioLevel4() {
         <div className="bg-white p-6 rounded-lg shadow-md mb-8">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Welcome to Advanced Portfolio Strategies</h2>
           <p className="text-gray-600 mb-4">
-            In Level 4, you'll tackle expert-level challenges that focus on more sophisticated investment approaches, 
+            In Level 4, you&apos;ll tackle expert-level challenges that focus on more sophisticated investment approaches, 
             including alternative investments and ESG (Environmental, Social, and Governance) integration strategies.
           </p>
           <p className="text-gray-600 mb-4">

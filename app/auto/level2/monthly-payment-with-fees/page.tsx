@@ -191,19 +191,22 @@ export default function MonthlyPaymentWithFees() {
   });
 
   // Calculate correct values
-  const calculateTotalPrice = () => {
-    const basePrice = vehicleAdvertisement.advertised.price;
-    const requiredFees = 
-      vehicleAdvertisement.actual.docFee + 
+  const calculateTotalFees = () => {
+    return vehicleAdvertisement.actual.docFee + 
       vehicleAdvertisement.actual.destinationFee + 
       vehicleAdvertisement.actual.titleFee + 
       vehicleAdvertisement.actual.registrationFee;
-    
-    const selectedAddOnsTotal = vehicleAdvertisement.actual.dealerAddOns
+  };
+  
+  const calculateAddOns = () => {
+    return vehicleAdvertisement.actual.dealerAddOns
       .filter(addon => selectedAddOns.includes(addon.name))
       .reduce((total, addon) => total + addon.price, 0);
-    
-    return basePrice + requiredFees + selectedAddOnsTotal;
+  };
+  
+  const calculateTotalPrice = () => {
+    const basePrice = vehicleAdvertisement.advertised.price;
+    return basePrice + calculateTotalFees() + calculateAddOns();
   };
 
   const calculateSalesTax = () => {

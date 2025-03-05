@@ -4,8 +4,20 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
+// Define the type for an investment
+interface Investment {
+  id: string;
+  name: string;
+  ticker: string;
+  return: number;
+  stdDev: number;
+  min: number;
+  max: number;
+  allocation: number;
+}
+
 // Mock data for actual implementation
-const investments = [
+const investments: Investment[] = [
   { id: 'SPY', name: 'S&P 500 ETF', ticker: 'SPY', return: 8.5, stdDev: 16.2, min: 0, max: 40, allocation: 0 },
   { id: 'QQQ', name: 'Nasdaq-100 ETF', ticker: 'QQQ', return: 10.2, stdDev: 19.3, min: 0, max: 30, allocation: 0 },
   { id: 'EFA', name: 'MSCI EAFE ETF', ticker: 'EFA', return: 7.8, stdDev: 17.5, min: 0, max: 30, allocation: 0 },
@@ -20,7 +32,7 @@ const investments = [
 ];
 
 // Simplified correlation matrix (would be more comprehensive in a real application)
-const correlationMatrix = Array(11).fill().map(() => Array(11).fill(0));
+const correlationMatrix = Array.from({length: 11}).map(() => Array(11).fill(0));
 
 // Fill the diagonal with 1s (each asset perfectly correlated with itself)
 for (let i = 0; i < 11; i++) {
@@ -69,7 +81,7 @@ const efficientFrontierPoints = [
 ];
 
 // The "optimal" portfolio at maximum Sharpe ratio
-const sampleOptimalPortfolio = {
+const sampleOptimalPortfolio: { [key: string]: number } = {
   SPY: 22,
   QQQ: 12,
   EFA: 8,
@@ -92,7 +104,7 @@ export default function EfficientPortfolio() {
   const [explanation, setExplanation] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const [optimalPortfolio, setOptimalPortfolio] = useState(null);
+  const [optimalPortfolio, setOptimalPortfolio] = useState<Investment[] | null>(null);
   const [showOptimal, setShowOptimal] = useState(false);
   const [riskFreeRate, setRiskFreeRate] = useState(2.0);
   
@@ -101,7 +113,7 @@ export default function EfficientPortfolio() {
     { role: 'assistant', content: "Welcome! I'm your Investment Guru AI assistant. I can help you craft an efficient portfolio for the Thompson family. What would you like to know about modern portfolio theory or the optimization process?" }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Predefined AI responses based on keywords
   const aiResponses = {
@@ -123,8 +135,8 @@ export default function EfficientPortfolio() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleAllocationChange = (id, value) => {
-    const newValue = parseInt(value) || 0;
+  const handleAllocationChange = (id: string, value: string | number) => {
+    const newValue = parseInt(value.toString()) || 0;
     const updatedPortfolio = portfolioData.map(inv => 
       inv.id === id ? { ...inv, allocation: Math.min(newValue, inv.max) } : inv
     );
@@ -250,7 +262,7 @@ export default function EfficientPortfolio() {
     }
   };
 
-  const handleChatSubmit = (e) => {
+  const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentMessage.trim()) return;
     
@@ -584,7 +596,7 @@ export default function EfficientPortfolio() {
                   <input
                     type="text"
                     value={currentMessage}
-                    onChange={(e) => setCurrentMessage(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentMessage(e.target.value)}
                     placeholder="Ask about portfolio theory or optimization..."
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-1 focus:ring-green-500"
                   />

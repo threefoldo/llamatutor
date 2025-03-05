@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 
 export default function PerformanceFactorAnalysis() {
@@ -33,7 +33,7 @@ export default function PerformanceFactorAnalysis() {
   ];
 
   // Factor exposure data
-  const factorData = [
+  const factorData = useMemo(() => [
     { 
       factor: 'Market', 
       description: 'Overall market movement', 
@@ -82,10 +82,23 @@ export default function PerformanceFactorAnalysis() {
       activeExposure: -0.25, 
       factorReturn: -1.5 
     }
-  ];
+  ], []);
+
+  // Define factor contribution interface
+  interface FactorContribution {
+    factor: string;
+    description: string;
+    fundExposure: number;
+    benchmarkExposure: number;
+    activeExposure: number;
+    factorReturn: number;
+    contribution: number;
+    benchmarkContribution: number;
+    activeContribution: number;
+  }
 
   // State variables
-  const [factorContributions, setFactorContributions] = useState([]);
+  const [factorContributions, setFactorContributions] = useState<FactorContribution[]>([]);
   const [skillMetrics, setSkillMetrics] = useState({
     alpha: 0,
     informationRatio: 0,
@@ -99,15 +112,21 @@ export default function PerformanceFactorAnalysis() {
   const [submitted, setSubmitted] = useState(false);
   const [feedback, setFeedback] = useState('');
   
+  // Define message interface
+  interface ChatMessage {
+    role: 'assistant' | 'user';
+    content: string;
+  }
+
   // For the chatbot
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: "Welcome to the Performance Factor Analysis challenge! I'm here to help you determine whether BlackRock Strategic Global Equity Fund's outperformance is due to manager skill or just factor exposures. What would you like to know about factor analysis?" }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Predefined AI responses for the chatbot
-  const aiResponses = {
+  const aiResponses: Record<string, string> = {
     'factor model': "A factor model breaks down investment returns into components attributable to different risk factors (like market, size, value) plus alpha (unexplained return). The formula is: Return = α + β₁(Factor₁) + β₂(Factor₂) + ... + residual. This helps identify the true sources of performance.",
     'alpha': "Alpha represents the portion of return that cannot be explained by exposure to common risk factors - it's often interpreted as manager skill. Positive alpha suggests value added through security selection or timing; negative alpha suggests underperformance vs. expectations.",
     'factor exposure': "Factor exposure (or beta) measures how sensitive a fund is to a particular risk factor. For example, a size factor exposure of 0.35 means the fund has more exposure to smaller companies than the market. These exposures can drive returns when factors perform well.",
@@ -118,18 +137,8 @@ export default function PerformanceFactorAnalysis() {
     'help': "I can help with: 1) Explaining factor analysis concepts like alpha and factor contribution, 2) Interpreting the fund's factor exposures, 3) Understanding how to calculate attribution results, or 4) Deciding whether the outperformance represents skill or just factor tilts. What would you like to know?"
   };
 
-  // Initialize calculations
-  useEffect(() => {
-    calculateFactorContributions();
-  }, []);
-
-  useEffect(() => {
-    // Scroll to the bottom of the messages container
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   // Calculate factor contributions
-  const calculateFactorContributions = () => {
+  const calculateFactorContributions = useCallback(() => {
     // Calculate factor contributions for fund
     const contributions = factorData.map(factor => {
       const contribution = factor.fundExposure * factor.factorReturn;
@@ -164,11 +173,21 @@ export default function PerformanceFactorAnalysis() {
     // Calculate implied alpha
     const impliedAlpha = fund.outperformance - excessFactorContribution;
     
-    setSkillMetrics({
-      ...skillMetrics,
+    setSkillMetrics(prevMetrics => ({
+      ...prevMetrics,
       alpha: impliedAlpha
-    });
-  };
+    }));
+  }, [factorData, fund.outperformance]);
+
+  // Initialize calculations
+  useEffect(() => {
+    calculateFactorContributions();
+  }, [calculateFactorContributions]);
+
+  useEffect(() => {
+    // Scroll to the bottom of the messages container
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   // Submit analysis
   const handleSubmit = () => {
@@ -207,12 +226,13 @@ export default function PerformanceFactorAnalysis() {
     }
   };
 
-  const handleChatSubmit = (e) => {
+  const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!currentMessage.trim()) return;
     
     // Add user message to chat
-    const updatedMessages = [...messages, { role: 'user', content: currentMessage }];
+    const newUserMessage: ChatMessage = { role: 'user', content: currentMessage };
+    const updatedMessages = [...messages, newUserMessage];
     setMessages(updatedMessages);
     
     // Generate AI response based on keywords in user message
@@ -229,7 +249,8 @@ export default function PerformanceFactorAnalysis() {
     
     // Add AI response with a small delay to feel more natural
     setTimeout(() => {
-      setMessages([...updatedMessages, { role: 'assistant', content: aiResponse }]);
+      const newAssistantMessage: ChatMessage = { role: 'assistant', content: aiResponse };
+      setMessages([...updatedMessages, newAssistantMessage]);
     }, 500);
     
     setCurrentMessage('');
@@ -298,7 +319,7 @@ export default function PerformanceFactorAnalysis() {
             
             <div>
               <h4 className="text-sm font-semibold text-gray-700">Manager Claim</h4>
-              <p className="text-sm text-gray-700">"{fund.managerClaim}"</p>
+              <p className="text-sm text-gray-700">&quot;{fund.managerClaim}&quot;</p>
             </div>
           </div>
         </div>
@@ -576,7 +597,7 @@ export default function PerformanceFactorAnalysis() {
                     </svg>
                   </div>
                   <h4 className="font-medium text-gray-800 mt-2">Factor Finder Badge Earned!</h4>
-                  <p className="text-sm text-gray-600 mt-1">You've mastered performance attribution analysis</p>
+                  <p className="text-sm text-gray-600 mt-1">You&apos;ve mastered performance attribution analysis</p>
                   
                   <div className="mt-6">
                     <Link href="/portfolio/level4" className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md">

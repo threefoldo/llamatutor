@@ -166,12 +166,12 @@ export default function TotalInterestComparison() {
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [userCalculations, setUserCalculations] = useState<{
     [key: string]: {
-      monthlyPayment: number | null;
-      totalInterest: number | null;
+      monthlyPayment: number | string;
+      totalInterest: number | string;
     };
   }>({
-    offer1: { monthlyPayment: null, totalInterest: null },
-    offer2: { monthlyPayment: null, totalInterest: null },
+    offer1: { monthlyPayment: '', totalInterest: '' },
+    offer2: { monthlyPayment: '', totalInterest: '' },
   });
   const [calculatedValues, setCalculatedValues] = useState<{
     [key: string]: {
@@ -245,8 +245,8 @@ export default function TotalInterestComparison() {
       userCalculations[selectedOffers[1]].totalInterest ? 
       `I've calculated the total interest for both loan options:
       
-      ${offerLabels[selectedOffers[0]]} offer: ${formatCurrency(userCalculations[selectedOffers[0]].totalInterest!)}
-      ${offerLabels[selectedOffers[1]]} offer: ${formatCurrency(userCalculations[selectedOffers[1]].totalInterest!)}
+      ${offerLabels[selectedOffers[0]]} offer: ${formatCurrency(Number(userCalculations[selectedOffers[0]].totalInterest))}
+      ${offerLabels[selectedOffers[1]]} offer: ${formatCurrency(Number(userCalculations[selectedOffers[1]].totalInterest))}
       
       Can you confirm if my calculations are correct and explain why the offer with the lower monthly payment might end up costing more in total interest?` : 
       "I'm trying to calculate the total interest on these two loans. Can you walk me through how to do it?";
@@ -260,9 +260,11 @@ export default function TotalInterestComparison() {
   };
 
   const checkCalculationAccuracy = (offerId: string, type: 'monthlyPayment' | 'totalInterest') => {
-    if (!userCalculations[offerId][type] || !calculatedValues[offerId]) return null;
+    if (userCalculations[offerId][type] === '' || !calculatedValues[offerId]) return null;
     
-    const userValue = userCalculations[offerId][type]!;
+    const userValue = typeof userCalculations[offerId][type] === 'string' 
+      ? parseFloat(userCalculations[offerId][type] as string) 
+      : userCalculations[offerId][type] as number;
     const calculatedValue = calculatedValues[offerId][type];
     const difference = Math.abs(userValue - calculatedValue);
     const percentDifference = (difference / calculatedValue) * 100;
@@ -372,12 +374,12 @@ export default function TotalInterestComparison() {
                               type="number"
                               className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-full"
                               placeholder="Enter monthly payment"
-                              value={userCalculations[offerId].monthlyPayment === null ? '' : userCalculations[offerId].monthlyPayment}
+                              value={userCalculations[offerId].monthlyPayment}
                               onChange={(e) => setUserCalculations({
                                 ...userCalculations,
                                 [offerId]: {
                                   ...userCalculations[offerId],
-                                  monthlyPayment: e.target.value ? parseFloat(e.target.value) : null
+                                  monthlyPayment: e.target.value ? parseFloat(e.target.value) : ''
                                 }
                               })}
                             />
@@ -402,12 +404,12 @@ export default function TotalInterestComparison() {
                               type="number"
                               className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-full"
                               placeholder="Enter total interest"
-                              value={userCalculations[offerId].totalInterest === null ? '' : userCalculations[offerId].totalInterest}
+                              value={userCalculations[offerId].totalInterest}
                               onChange={(e) => setUserCalculations({
                                 ...userCalculations,
                                 [offerId]: {
                                   ...userCalculations[offerId],
-                                  totalInterest: e.target.value ? parseFloat(e.target.value) : null
+                                  totalInterest: e.target.value ? parseFloat(e.target.value) : ''
                                 }
                               })}
                             />

@@ -4,9 +4,18 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
+interface Investment {
+  id: string;
+  name: string;
+  ticker: string;
+  return: number;
+  stdDev: number;
+  allocation: number;
+}
+
 export default function BuildFirstPortfolio() {
   // Investment options with their data
-  const investments = [
+  const investments: Investment[] = [
     { id: 'VTI', name: 'Vanguard Total Stock Market ETF', ticker: 'VTI', return: 9.8, stdDev: 15.2, allocation: 0 },
     { id: 'BND', name: 'Vanguard Total Bond Market ETF', ticker: 'BND', return: 3.2, stdDev: 5.1, allocation: 0 },
     { id: 'IVV', name: 'iShares Core S&P 500 ETF', ticker: 'IVV', return: 9.5, stdDev: 14.8, allocation: 0 },
@@ -53,8 +62,8 @@ export default function BuildFirstPortfolio() {
     calculatePortfolioMetrics();
   }, [portfolioData]);
 
-  const handleAllocationChange = (id, value) => {
-    const newValue = parseInt(value) || 0;
+  const handleAllocationChange = (id: string, value: string | number) => {
+    const newValue = parseInt(value.toString()) || 0;
     const updatedPortfolio = portfolioData.map(inv => 
       inv.id === id ? { ...inv, allocation: newValue } : inv
     );
