@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import Chat from "@/components/Chat";
+import AutoLayout from "@/components/AutoLayout";
 
 interface LoanOffer {
   id: string;
@@ -29,117 +28,208 @@ interface PaymentScheduleRow {
   remainingBalance: number;
 }
 
-const loanOffer: LoanOffer = {
-  id: "offer1",
-  vehicle: "Tesla Model 3 2024",
-  price: 47000,
-  apr: 4.25,
-  term: 60, // 5 years in months
-  downPayment: 5000,
-  image: "/imgs/tesla_model3.jpg",
-  additionalFees: {
-    docFee: 499,
-    taxRate: 6.5, // percentage
-    titleFee: 75,
-    registrationFee: 365,
-  },
-};
+interface AmortizationRow {
+  month: number;
+  interest: number;
+  principal: number;
+  balance: number;
+  isCalculated: boolean;
+}
+
+interface UserCalculations {
+  monthlyPayment?: number;
+  totalInterest?: number;
+  startBalance: number;
+  amortizationTable: AmortizationRow[];
+}
 
 export default function AmortizationAnalysis() {
-  const router = useRouter();
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>([
-    {
-      role: "system",
-      content: `You are an auto finance assistant helping a client understand amortization schedules. Your goal is to guide them through analyzing how payments are split between principal and interest over time. Be educational, explain the concepts, and guide them step by step.
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Loan details (fixed for this exercise)
+  const loanDetails = {
+    vehiclePrice: 25000, // Base vehicle price
+    salesTax: 1500, // 6% sales tax
+    documentationFee: 150, // Documentation fee
+    titleFee: 100, // Title transfer fee
+    registrationFee: 250, // Vehicle registration fee
+    totalPrice: 27000, // Total price including all fees
+    downPayment: 5000, // Down payment
+    amount: 22000, // Loan amount (totalPrice - downPayment)
+    interestRate: 4, // Annual interest rate (%)
+    term: 48, // Loan term in months
+    payment: 496.74, // Monthly payment
+    totalPaid: 23843.52, // Total amount paid over the loan term
+    financeCost: 1843.52 // Total interest paid (totalPaid - amount)
+  };
+  
+  // Key months to display in amortization table
+  const keyMonths = [1, 12, 24, 36, 48];
+  
+  // Get correct row data for validation (hidden from students)
+  const getCorrectRowData = (month: number): { interest: number; principal: number; balance: number } => {
+    // Use the starting balance from user input if available, otherwise use loan amount
+    let balance = userCalculations.startBalance > 0 ? userCalculations.startBalance : loanDetails.amount;
+    const monthlyRate = loanDetails.interestRate / 100 / 12;
+    
+    for (let i = 1; i <= month; i++) {
+      const interest = balance * monthlyRate;
+      const principal = loanDetails.payment - interest;
+      balance = balance - principal;
       
-      Explain to the client:
-      - How amortization works (fixed payment but changing principal/interest ratios)
-      - Why early payments are mostly interest while later payments are mostly principal
-      - How to calculate the principal and interest portions of any payment
-      - How to find the remaining balance at any point in the loan
-      
-      Use the standard amortization formula and explain each component:
-      - Monthly Payment: P × (r × (1 + r)^n) ÷ ((1 + r)^n - 1)
-      - Interest portion: Remaining Balance × Monthly Rate
-      - Principal portion: Monthly Payment - Interest portion
-      - New Remaining Balance: Previous Remaining Balance - Principal portion
-      
-      Be helpful, patient, and ensure they understand the concepts. Always show your work and explain the formulas used. Encourage them to try calculations themselves.`,
-    },
-    {
-      role: "assistant",
-      content: "Hello! I'm your auto finance assistant. I'm here to help you understand how amortization works in your Tesla Model 3 loan. Let's explore how your monthly payments are divided between principal and interest, and how this changes over the life of your loan!",
-    },
-  ]);
-  const [promptValue, setPromptValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleChat = async () => {
-    if (!promptValue.trim() || isLoading) return;
-
-    const userMessage = { role: "user", content: promptValue };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setPromptValue("");
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/getChat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: [
-            ...messages,
-            userMessage,
-          ],
-        }),
-      });
-
-      if (!response.body) {
-        throw new Error("No response body");
+      if (i === month) {
+        return {
+          interest,
+          principal,
+          balance: Math.max(0, balance) // Ensure balance doesn't go below 0
+        };
       }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-      let text = "";
-
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { role: "assistant", content: "" },
-      ]);
-
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        if (value) {
-          const chunkValue = decoder.decode(value);
-          text += chunkValue;
-          setMessages((prevMessages) => {
-            const newMessages = [...prevMessages];
-            newMessages[newMessages.length - 1] = {
-              role: "assistant",
-              content: text,
-            };
-            return newMessages;
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error in chat:", error);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        {
-          role: "assistant",
-          content:
-            "I'm sorry, but I encountered an error. Please try again later.",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
     }
+    
+    return { interest: 0, principal: 0, balance: 0 };
+  };
+  
+  // Create initial table with empty calculations
+  const initializeAmortizationTable = (): AmortizationRow[] => {
+    return keyMonths.map(month => {
+      return {
+        month,
+        interest: 0,
+        principal: 0,
+        balance: 0,
+        isCalculated: false
+      };
+    });
+  };
+  
+  // State for user calculations
+  const [userCalculations, setUserCalculations] = useState<UserCalculations>({
+    monthlyPayment: undefined,
+    totalInterest: undefined,
+    startBalance: 0,
+    amortizationTable: initializeAmortizationTable()
+  });
+  
+  // Display states
+  const [showFormulas, setShowFormulas] = useState(false);
+  
+  // Track completion status for each calculation
+  const [completedCalculations, setCompletedCalculations] = useState({
+    monthlyPayment: false,
+    amortizationTable: false
+  });
+  
+  // User progress trackers
+  const [totalCorrect, setTotalCorrect] = useState<number>(0);
+  const [totalCells, setTotalCells] = useState<number>(keyMonths.length * 3);
+
+  // Initialize component
+  useEffect(() => {
+    // Simulate loading time
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+  }, []);
+  
+  // Calculate monthly payment
+  const calculateMonthlyPayment = (principal: number, rate: number, term: number): number => {
+    const monthlyRate = rate / 100 / 12;
+    return (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -term));
+  };
+  
+  // Validate a user-entered value against the correct answer
+  const validateValue = (value: number, correctValue: number): boolean => {
+    const difference = Math.abs(value - correctValue);
+    const percentDifference = (difference / correctValue) * 100;
+    return percentDifference < 2; // Allow for rounding differences (2% tolerance)
+  };
+  
+  // Validate monthly payment calculation
+  const validateMonthlyPaymentInput = (value: string): boolean => {
+    if (!value) return false;
+    
+    const userValue = parseFloat(value);
+    if (isNaN(userValue)) return false;
+    
+    const correctValue = loanDetails.payment;
+    const isCorrect = validateValue(userValue, correctValue);
+    
+    if (isCorrect && !completedCalculations.monthlyPayment) {
+      setCompletedCalculations(prev => ({...prev, monthlyPayment: true}));
+    }
+    
+    return isCorrect;
+  };
+  
+  // Validate a table cell value
+  const validateTableCell = (
+    month: number, 
+    field: 'interest' | 'principal' | 'balance', 
+    value: string
+  ): boolean => {
+    if (!value) return false;
+    
+    const userValue = parseFloat(value);
+    if (isNaN(userValue)) return false;
+    
+    const correctData = getCorrectRowData(month);
+    const correctValue = correctData[field];
+    
+    return validateValue(userValue, correctValue);
+  };
+  
+  // Handle table cell value change
+  const handleCellValueChange = (
+    month: number, 
+    field: 'interest' | 'principal' | 'balance', 
+    value: string
+  ) => {
+    if (!value) return;
+    
+    const userValue = parseFloat(value);
+    if (isNaN(userValue)) return;
+    
+    const isCorrect = validateTableCell(month, field, value);
+    
+    setUserCalculations(prev => {
+      // Check if this value was previously incorrect and is now correct
+      // or was previously correct and is now incorrect
+      const previousRowData = prev.amortizationTable.find(row => row.month === month);
+      const wasCorrect = previousRowData ? 
+        validateTableCell(month, field, previousRowData[field].toString()) : false;
+      
+      // Update total correct count
+      if (isCorrect && !wasCorrect) {
+        setTotalCorrect(prev => prev + 1);
+      } else if (!isCorrect && wasCorrect) {
+        setTotalCorrect(prev => prev - 1);
+      }
+    
+      const updatedTable = prev.amortizationTable.map(row => {
+        if (row.month === month) {
+          const updatedRow = { ...row, [field]: userValue };
+          
+          // Check if all fields for this row are correctly calculated
+          const interestCorrect = validateTableCell(month, 'interest', field === 'interest' ? value : row.interest.toString());
+          const principalCorrect = validateTableCell(month, 'principal', field === 'principal' ? value : row.principal.toString());
+          const balanceCorrect = validateTableCell(month, 'balance', field === 'balance' ? value : row.balance.toString());
+          
+          updatedRow.isCalculated = interestCorrect && principalCorrect && balanceCorrect;
+          
+          return updatedRow;
+        }
+        return row;
+      });
+      
+      // Check if all rows are correctly calculated
+      const allRowsCalculated = updatedTable.every(row => row.isCalculated);
+      if (allRowsCalculated && !completedCalculations.amortizationTable) {
+        setCompletedCalculations(prev => ({...prev, amortizationTable: true}));
+      }
+      
+      return { ...prev, amortizationTable: updatedTable };
+    });
   };
 
   const formatCurrency = (amount: number) => {
@@ -149,43 +239,41 @@ export default function AmortizationAnalysis() {
     }).format(amount);
   };
 
-  const [isChatOpen, setIsChatOpen] = useState(true);
-  const [paymentSchedule, setPaymentSchedule] = useState<PaymentScheduleRow[]>([]);
-  const [hoveredPayment, setHoveredPayment] = useState<number | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState<number | null>(null);
-  const [userAnswer, setUserAnswer] = useState<number | null>(null);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [questionType, setQuestionType] = useState<'principal' | 'interest' | 'remaining'>('remaining');
-  const [questionPayment, setQuestionPayment] = useState<number>(0);
-
-  const calculateLoanAmount = () => {
-    const salesTax = loanOffer.price * (loanOffer.additionalFees.taxRate / 100);
-    const totalFees = loanOffer.additionalFees.docFee + 
-                    salesTax + 
-                    loanOffer.additionalFees.titleFee + 
-                    loanOffer.additionalFees.registrationFee;
+  const calculateLoanAmount = (offer: LoanOffer) => {
+    if (!offer) return 0;
     
-    return loanOffer.price + totalFees - loanOffer.downPayment;
+    const salesTax = offer.price * (offer.additionalFees.taxRate / 100);
+    const totalFees = offer.additionalFees.docFee + 
+                    salesTax + 
+                    offer.additionalFees.titleFee + 
+                    offer.additionalFees.registrationFee;
+    
+    return offer.price + totalFees - offer.downPayment;
   };
 
-  const calculateMonthlyPayment = () => {
-    const principal = calculateLoanAmount();
-    const monthlyRate = loanOffer.apr / 100 / 12;
-    const termMonths = loanOffer.term;
+  // This function will be used for the Honda Civic example later
+const calculatePaymentForOffer = (offer: LoanOffer) => {
+    if (!offer) return 0;
+    
+    const principal = calculateLoanAmount(offer);
+    const monthlyRate = offer.apr / 100 / 12;
+    const termMonths = offer.term;
     
     const payment = (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -termMonths));
     return payment;
   };
 
-  const generateAmortizationSchedule = () => {
-    const loanAmount = calculateLoanAmount();
-    const monthlyPayment = calculateMonthlyPayment();
-    const monthlyRate = loanOffer.apr / 100 / 12;
+  const generateAmortizationSchedule = (offer: LoanOffer) => {
+    if (!offer) return [];
+    
+    const loanAmount = calculateLoanAmount(offer);
+    const monthlyPayment = calculatePaymentForOffer(offer);
+    const monthlyRate = offer.apr / 100 / 12;
     const schedule: PaymentScheduleRow[] = [];
     
     let remainingBalance = loanAmount;
     
-    for (let paymentNumber = 1; paymentNumber <= loanOffer.term; paymentNumber++) {
+    for (let paymentNumber = 1; paymentNumber <= offer.term; paymentNumber++) {
       const interestPayment = remainingBalance * monthlyRate;
       const principalPayment = monthlyPayment - interestPayment;
       
@@ -203,17 +291,11 @@ export default function AmortizationAnalysis() {
     return schedule;
   };
 
-  useEffect(() => {
-    const schedule = generateAmortizationSchedule();
-    setPaymentSchedule(schedule);
-    
-    // Generate a random question
-    generateRandomQuestion(schedule);
-  }, []);
-
   const generateRandomQuestion = (schedule: PaymentScheduleRow[]) => {
+    if (!loanOffer || !schedule.length) return;
+    
     // Choose a random payment between 1 and term
-    const randomPayment = Math.floor(Math.random() * loanOffer.term) + 1;
+    const randomPayment = Math.floor(Math.random() * (loanOffer.term)) + 1;
     
     // Choose a random question type
     const questionTypes: ('principal' | 'interest' | 'remaining')[] = ['principal', 'interest', 'remaining'];
@@ -221,58 +303,185 @@ export default function AmortizationAnalysis() {
     
     setQuestionType(randomType);
     setQuestionPayment(randomPayment);
-    setUserAnswer(null);
+    setUserAnswer('');
     setIsCorrect(null);
     setSelectedPayment(randomPayment);
+    
+    // Reset user calculations for the new selected payment
+    setUserCalculations(prev => ({
+      ...prev,
+      selectedPaymentData: {
+        principal: undefined,
+        interest: undefined,
+        remainingBalance: undefined
+      }
+    }));
+    
+    // Store correct answers internally (never shown to student)
+    const paymentRow = schedule[randomPayment - 1];
+    if (paymentRow) {
+      setCorrectAnswers(prev => ({
+        ...prev,
+        principal: paymentRow.principal,
+        interest: paymentRow.interest,
+        remaining: paymentRow.remainingBalance
+      }));
+    }
   };
 
-  const checkAnswer = () => {
-    if (userAnswer === null || selectedPayment === null) return;
+  const handlePaymentSelect = (paymentNumber: number) => {
+    if (!paymentSchedule.length) return;
     
-    const paymentRow = paymentSchedule[selectedPayment - 1];
+    setSelectedPayment(paymentNumber);
+    setUserAnswer('');
+    setIsCorrect(null);
+    
+    // Update the question to match the selected payment
+    setQuestionPayment(paymentNumber);
+    
+    // Reset user calculations for the new selected payment
+    setUserCalculations(prev => ({
+      ...prev,
+      selectedPaymentData: {
+        principal: undefined,
+        interest: undefined,
+        remainingBalance: undefined
+      }
+    }));
+    
+    // Store correct answers internally (never shown to student)
+    const paymentRow = paymentSchedule[paymentNumber - 1];
+    if (paymentRow) {
+      setCorrectAnswers(prev => ({
+        ...prev,
+        principal: paymentRow.principal,
+        interest: paymentRow.interest,
+        remaining: paymentRow.remainingBalance
+      }));
+    }
+  };
+
+  const validateAnswer = () => {
+    if (!userAnswer || selectedPayment === null) return;
+    
+    const userValue = parseFloat(userAnswer);
+    if (isNaN(userValue)) return;
+    
     let correctAnswer: number = 0;
+    let fieldToUpdate: keyof UserCalculations['selectedPaymentData'] = 'remainingBalance';
     
     switch (questionType) {
       case 'principal':
-        correctAnswer = paymentRow.principal;
+        correctAnswer = correctAnswers.principal;
+        fieldToUpdate = 'principal';
         break;
       case 'interest':
-        correctAnswer = paymentRow.interest;
+        correctAnswer = correctAnswers.interest;
+        fieldToUpdate = 'interest';
         break;
       case 'remaining':
-        correctAnswer = paymentRow.remainingBalance;
+        correctAnswer = correctAnswers.remaining;
+        fieldToUpdate = 'remainingBalance';
         break;
     }
     
-    const difference = Math.abs(userAnswer - correctAnswer);
+    const difference = Math.abs(userValue - correctAnswer);
     const percentDifference = (difference / correctAnswer) * 100;
     const correct = percentDifference < 2; // Allow for some rounding differences
     
     setIsCorrect(correct);
     
-    // Ask the assistant about the answer
-    const questionTypeText = {
-      'principal': 'principal payment',
-      'interest': 'interest payment',
-      'remaining': 'remaining balance'
-    };
+    // Store the user's calculation regardless of correctness
+    setUserCalculations(prev => ({
+      ...prev,
+      selectedPaymentData: {
+        ...prev.selectedPaymentData,
+        [fieldToUpdate]: userValue
+      }
+    }));
     
-    setPromptValue(`I calculated the ${questionTypeText[questionType]} for payment #${selectedPayment} to be ${formatCurrency(userAnswer)}. ${correct ? "I got it right! Can you explain how this is calculated?" : "I'm not getting the right answer. Can you walk me through how to calculate this correctly?"}`);
-    handleChat();
+    if (!correct) {
+      // Show formula reference if answer is incorrect
+      setShowFormulas(true);
+    }
+  };
+  
+  const validateLoanAmount = (value: string) => {
+    if (!value || !loanOffer) return false;
+    
+    const userValue = parseFloat(value);
+    if (isNaN(userValue)) return false;
+    
+    const difference = Math.abs(userValue - correctAnswers.loanAmount);
+    const percentDifference = (difference / correctAnswers.loanAmount) * 100;
+    
+    const isCorrect = percentDifference < 2; // Allow for some rounding differences
+    
+    if (isCorrect && !completedCalculations.loanAmount) {
+      setCompletedCalculations(prev => ({...prev, loanAmount: true}));
+    }
+    
+    return isCorrect;
+  };
+  
+  const validateCalculatedMonthlyPayment = (value: string) => {
+    if (!value) return false;
+    
+    const userValue = parseFloat(value);
+    if (isNaN(userValue)) return false;
+    
+    const correctValue = loanDetails.payment;
+    const difference = Math.abs(userValue - correctValue);
+    const percentDifference = (difference / correctValue) * 100;
+    
+    const isCorrect = percentDifference < 2; // Allow for some rounding differences
+    
+    if (isCorrect && !completedCalculations.monthlyPayment) {
+      setCompletedCalculations(prev => ({...prev, monthlyPayment: true}));
+    }
+    
+    return isCorrect;
+  };
+  
+  const validateTotalInterest = (value: string) => {
+    if (!value || !paymentSchedule.length) return false;
+    
+    const userValue = parseFloat(value);
+    if (isNaN(userValue)) return false;
+    
+    const difference = Math.abs(userValue - correctAnswers.totalInterest);
+    const percentDifference = (difference / correctAnswers.totalInterest) * 100;
+    
+    const isCorrect = percentDifference < 2; // Allow for some rounding differences
+    
+    if (isCorrect && !completedCalculations.totalInterest) {
+      setCompletedCalculations(prev => ({...prev, totalInterest: true}));
+    }
+    
+    return isCorrect;
+  };
+  
+  const validateInterestRatio = (value: string) => {
+    if (!value || !paymentSchedule.length) return false;
+    
+    const userValue = parseFloat(value);
+    if (isNaN(userValue)) return false;
+    
+    const difference = Math.abs(userValue - correctAnswers.interestToLoanRatio);
+    const percentDifference = difference < 10 ? difference : (difference / correctAnswers.interestToLoanRatio) * 100;
+    
+    const isCorrect = percentDifference < 2; // Allow for some rounding differences
+    
+    if (isCorrect && !completedCalculations.interestToLoanRatio) {
+      setCompletedCalculations(prev => ({...prev, interestToLoanRatio: true}));
+    }
+    
+    return isCorrect;
   };
 
-  const toggleChat = () => {
-    setIsChatOpen(!isChatOpen);
-  };
-
-  const handlePaymentSelect = (paymentNumber: number) => {
-    setSelectedPayment(paymentNumber);
-    setUserAnswer(null);
-    setIsCorrect(null);
-  };
 
   const getPaymentBreakdown = (paymentNumber: number) => {
-    if (paymentNumber < 1 || paymentNumber > paymentSchedule.length) return null;
+    if (!paymentSchedule.length || paymentNumber < 1 || paymentNumber > paymentSchedule.length) return null;
     
     const row = paymentSchedule[paymentNumber - 1];
     const totalPayment = row.payment;
@@ -287,240 +496,340 @@ export default function AmortizationAnalysis() {
     };
   };
 
-  return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className="relative bg-blue-800 text-white py-8">
-        <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold mb-2">Amortization Analysis</h1>
-          <p className="max-w-3xl">
-            Understand how auto loan payments are divided between principal and interest over time, and how to calculate remaining balances.
-          </p>
+  // Define system prompts for the assistant
+  const initialMessages = [
+    {
+      role: "system",
+      content: `You are an auto finance assistant helping a client understand amortization schedules. Your goal is to guide them through analyzing how payments are split between principal and interest over time. Be educational, explain the concepts, and guide them step by step.
+      
+      Explain to the client:
+      - How amortization works (fixed payment but changing principal/interest ratios)
+      - Why early payments are mostly interest while later payments are mostly principal
+      - How to calculate the principal and interest portions of any payment
+      - How to find the remaining balance at any point in the loan
+      
+      Use the standard amortization formula and explain each component:
+      - Monthly Payment: P × (r × (1 + r)^n) ÷ ((1 + r)^n - 1)
+      - Interest portion: Remaining Balance × Monthly Rate
+      - Principal portion: Monthly Payment - Interest portion
+      - New Remaining Balance: Previous Remaining Balance - Principal portion
+      
+      IMPORTANT: Never provide specific dollar amounts or numerical answers to calculations. Only provide general formulas and conceptual explanations. Guide the student to discover the answers themselves.
+      
+      Be helpful, patient, and ensure they understand the concepts. Encourage them to try calculations themselves.`,
+    },
+    {
+      role: "assistant",
+      content: "Hello! I'm your auto finance assistant. I'm here to help you understand how amortization works in auto loans. Let's explore how monthly payments are divided between principal and interest, and how this changes over the life of your loan!",
+    },
+  ];
+
+  // Scenario description
+  const scenarioText = `
+As a financial advisor, you're helping a client understand the amortization schedule for their auto loan. They've been approved for financing on a car with the following terms:
+
+Loan amount: $20,000
+Interest rate: 4%
+Loan term: 48 months (4 years)
+
+Your client is particularly interested in:
+1. How their payments are divided between principal and interest
+2. Why the proportion of principal to interest changes over the life of the loan
+3. How to calculate the remaining balance at different points in the loan term
+
+Your task is to:
+- Calculate the monthly payment for this loan
+- Complete an amortization table showing key months in the loan term (1, 12, 24, 36, and 48)
+- For each key month, calculate the interest portion, principal portion, and remaining balance
+
+This exercise will help you understand how amortization works and how to calculate key values at any point in a loan's term.
+`;
+
+  // Main content components
+  const LoanDetailsSection = () => {
+    if (isLoading) {
+      return (
+        <div className="py-8 text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p>Loading loan details...</p>
         </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row">
-        <div className={`w-full ${isChatOpen ? 'lg:w-2/3' : 'lg:w-full'} transition-all duration-300 px-4 py-6`}>
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-bold mb-4">Scenario</h2>
-            <p className="mb-6 text-gray-700">
-              Your client has been approved for financing on a new Tesla Model 3. They want to understand how their loan will be paid off over time, 
-              specifically how each payment is split between principal and interest. Help them analyze the amortization schedule and answer their 
-              specific questions about the loan.
-            </p>
-
-            <div className="flex flex-col md:flex-row gap-6 mb-8">
-              <div className="w-full md:w-1/3">
-                <div className="border rounded-lg p-6">
-                  <div className="relative w-full h-40 mb-4 overflow-hidden rounded-md">
-                    <Image
-                      src={loanOffer.image}
-                      alt={loanOffer.vehicle}
-                      fill
-                      style={{ objectFit: "cover" }}
-                    />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-3">{loanOffer.vehicle}</h3>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <p className="text-gray-600">Price:</p>
-                    <p className="font-medium">{formatCurrency(loanOffer.price)}</p>
-                    
-                    <p className="text-gray-600">APR:</p>
-                    <p className="font-medium">{loanOffer.apr}%</p>
-                    
-                    <p className="text-gray-600">Term:</p>
-                    <p className="font-medium">{loanOffer.term} months</p>
-                    
-                    <p className="text-gray-600">Down Payment:</p>
-                    <p className="font-medium">{formatCurrency(loanOffer.downPayment)}</p>
-                    
-                    <p className="text-gray-600">Loan Amount:</p>
-                    <p className="font-medium">{formatCurrency(calculateLoanAmount())}</p>
-                    
-                    <p className="text-gray-600">Monthly Payment:</p>
-                    <p className="font-medium">{formatCurrency(calculateMonthlyPayment())}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="w-full md:w-2/3">
-                <div className="border rounded-lg p-6 h-full">
-                  <h3 className="text-lg font-semibold mb-4">Amortization Schedule</h3>
+      );
+    }
+    
+    if (error) {
+      return (
+        <div className="py-8 text-center text-red-500">
+          {error}
+        </div>
+      );
+    }
+    
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-bold mb-4">Loan Amortization Analysis</h2>
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="w-full">
+            <div className="mb-6">
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h3 className="text-lg font-semibold mb-3">Loan Details</h3>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <p className="text-gray-600">Vehicle Base Price:</p>
+                  <p className="font-medium">{formatCurrency(loanDetails.vehiclePrice)}</p>
                   
-                  <div className="mb-4">
-                    <div className="relative w-full h-10 bg-gray-100 rounded-lg overflow-hidden mb-2">
-                      {paymentSchedule.map((row, index) => {
-                        const totalPaid = (row.paymentNumber / loanOffer.term) * 100;
-                        const width = `${100 / loanOffer.term}%`;
-                        const isSelected = selectedPayment === row.paymentNumber;
-                        const isHovered = hoveredPayment === row.paymentNumber;
-                        
-                        return (
-                          <div 
-                            key={row.paymentNumber}
-                            className={`absolute top-0 h-full cursor-pointer transition-all ${isSelected ? 'bg-blue-600' : isHovered ? 'bg-blue-400' : 'bg-blue-300'}`}
-                            style={{ 
-                              left: `${(row.paymentNumber - 1) * (100 / loanOffer.term)}%`,
-                              width 
-                            }}
-                            onClick={() => handlePaymentSelect(row.paymentNumber)}
-                            onMouseEnter={() => setHoveredPayment(row.paymentNumber)}
-                            onMouseLeave={() => setHoveredPayment(null)}
-                          />
-                        );
-                      })}
-                      <div className="absolute inset-0 flex justify-between px-2 items-center text-xs font-semibold">
-                        <span>1</span>
-                        <span>{loanOffer.term}</span>
-                      </div>
-                    </div>
-                    
-                    <p className="text-sm text-gray-600 mb-4">
-                      Click on a payment to analyze its details
-                    </p>
-                  </div>
+                  <p className="text-gray-600">Sales Tax (6%):</p>
+                  <p className="font-medium">{formatCurrency(loanDetails.salesTax)}</p>
                   
-                  {selectedPayment !== null && (
-                    <div>
-                      <h4 className="font-semibold mb-2">Payment #{selectedPayment} Details</h4>
-                      
-                      {getPaymentBreakdown(selectedPayment) && (
-                        <div>
-                          <div className="mb-4">
-                            <div className="relative w-full h-12 bg-gray-100 rounded-lg overflow-hidden">
-                              <div 
-                                className="absolute top-0 left-0 h-full bg-blue-500"
-                                style={{ width: `${getPaymentBreakdown(selectedPayment)!.principalPercentage}%` }}
-                              >
-                                <div className="h-full flex items-center justify-center text-white text-xs font-medium">
-                                  Principal: {formatCurrency(getPaymentBreakdown(selectedPayment)!.principal)}
-                                </div>
-                              </div>
-                              <div 
-                                className="absolute top-0 right-0 h-full bg-orange-500"
-                                style={{ width: `${getPaymentBreakdown(selectedPayment)!.interestPercentage}%` }}
-                              >
-                                <div className="h-full flex items-center justify-center text-white text-xs font-medium">
-                                  Interest: {formatCurrency(getPaymentBreakdown(selectedPayment)!.interest)}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-center text-sm mt-1">
-                              Total Payment: {formatCurrency(getPaymentBreakdown(selectedPayment)!.payment)}
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <p className="text-sm text-gray-600">Previous Balance</p>
-                              <p className="font-medium">
-                                {selectedPayment > 1 
-                                  ? formatCurrency(getPaymentBreakdown(selectedPayment - 1)!.remainingBalance) 
-                                  : formatCurrency(calculateLoanAmount())}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Remaining Balance</p>
-                              <p className="font-medium">
-                                {formatCurrency(getPaymentBreakdown(selectedPayment)!.remainingBalance)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                        <h4 className="font-semibold mb-2">Practice Problem</h4>
-                        <p className="mb-4">
-                          {questionType === 'principal' && `Calculate the principal portion of payment #${questionPayment}.`}
-                          {questionType === 'interest' && `Calculate the interest portion of payment #${questionPayment}.`}
-                          {questionType === 'remaining' && `Calculate the remaining balance after payment #${questionPayment} is made.`}
-                        </p>
-                        
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline flex-1"
-                            placeholder="Enter your answer"
-                            value={userAnswer === null ? '' : userAnswer}
-                            onChange={(e) => setUserAnswer(e.target.value ? parseFloat(e.target.value) : null)}
-                          />
-                          <button
-                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                            onClick={checkAnswer}
-                            disabled={userAnswer === null}
-                          >
-                            Check
-                          </button>
-                        </div>
-                        
-                        {isCorrect !== null && (
-                          <div className={`mt-2 text-sm ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                            {isCorrect 
-                              ? 'Correct! Great job!' 
-                              : 'Not quite right. Try again or check with the assistant for help.'}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-gray-600">Documentation Fee:</p>
+                  <p className="font-medium">{formatCurrency(loanDetails.documentationFee)}</p>
+                  
+                  <p className="text-gray-600">Title Fee:</p>
+                  <p className="font-medium">{formatCurrency(loanDetails.titleFee)}</p>
+                  
+                  <p className="text-gray-600">Registration Fee:</p>
+                  <p className="font-medium">{formatCurrency(loanDetails.registrationFee)}</p>
+                  
+                  <p className="text-gray-600 font-semibold">Total Vehicle Price:</p>
+                  <p className="font-medium font-semibold">{formatCurrency(loanDetails.totalPrice)}</p>
+                  
+                  <p className="text-gray-600">Down Payment:</p>
+                  <p className="font-medium">{formatCurrency(loanDetails.downPayment)}</p>
+                  
+                  <p className="text-gray-600 font-semibold">Loan Amount:</p>
+                  <p className="font-medium font-semibold">{formatCurrency(loanDetails.amount)}</p>
+                  
+                  <p className="text-gray-600">Interest Rate:</p>
+                  <p className="font-medium">{loanDetails.interestRate}%</p>
+                  
+                  <p className="text-gray-600">Loan Term:</p>
+                  <p className="font-medium">{loanDetails.term} months</p>
+                  
+                  <p className="text-gray-600">Monthly Payment:</p>
+                  <p className="font-medium">{formatCurrency(loanDetails.payment)}</p>
+                  
+                  <p className="text-gray-600">Total Amount Paid:</p>
+                  <p className="font-medium">{formatCurrency(loanDetails.totalPaid)}</p>
+                  
+                  <p className="text-gray-600">Finance Cost:</p>
+                  <p className="font-medium">{formatCurrency(loanDetails.financeCost)}</p>
                 </div>
               </div>
             </div>
             
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-bold mb-2">Helpful Formula Reference</h3>
-              <p className="text-sm text-gray-700 mb-2">
-                <strong>Understanding Amortization:</strong>
+            
+            {/* Amortization Table */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Amortization Schedule</h3>
+                <button
+                  onClick={() => setShowFormulas(!showFormulas)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                >
+                  {showFormulas ? 'Hide Formulas' : 'Show Formulas'}
+                </button>
+              </div>
+              
+              
+              {/* Formula Reference */}
+              {showFormulas && (
+                <div className="bg-blue-50 p-4 rounded-lg mb-4 animate-fadeIn">
+                  <h4 className="font-bold mb-2">Amortization Formula Reference</h4>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-medium">Monthly Payment Formula:</p>
+                      <p className="text-gray-700">Payment = P × (r × (1 + r)^n) ÷ ((1 + r)^n - 1)</p>
+                      <p className="text-gray-600 text-xs mt-1">Where:</p>
+                      <ul className="list-disc pl-5 text-gray-600 text-xs">
+                        <li>P = Principal (loan amount)</li>
+                        <li>r = Monthly interest rate (annual rate ÷ 12 ÷ 100)</li>
+                        <li>n = Total number of payments (term in months)</li>
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <p className="font-medium">For each payment:</p>
+                      <ol className="list-decimal pl-5 text-gray-700 space-y-1">
+                        <li>Interest = Current Balance × Monthly Rate</li>
+                        <li>Principal = Payment - Interest</li>
+                        <li>New Balance = Previous Balance - Principal</li>
+                      </ol>
+                    </div>
+                    
+                    <div className="text-xs text-gray-600">
+                      <p><strong>Key Insight:</strong> Early in the loan, most of the payment goes to interest because the balance is high. Later, more goes to principal as the balance decreases.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <p className="text-sm text-gray-600 mb-4">
+                Complete the amortization table below by calculating the interest, principal, and balance for each month.
+                Use the following steps for each row:
+                <ol className="list-decimal pl-5 text-xs mt-2 space-y-1">
+                  <li><strong>Interest</strong>: Current balance × monthly rate (4% ÷ 12 ÷ 100 = 0.0033)</li>
+                  <li><strong>Principal</strong>: Monthly payment − interest</li>
+                  <li><strong>Balance</strong>: Previous balance − principal</li>
+                </ol>
               </p>
-              <ul className="list-disc pl-5 text-sm text-gray-700">
-                <li>
-                  <strong>Interest Payment</strong> = Current Balance × (Annual Rate ÷ 12 ÷ 100)
-                </li>
-                <li>
-                  <strong>Principal Payment</strong> = Monthly Payment - Interest Payment
-                </li>
-                <li>
-                  <strong>New Balance</strong> = Previous Balance - Principal Payment
-                </li>
-                <li>
-                  Early in the loan, most of each payment goes to interest because the balance is high
-                </li>
-                <li>
-                  Later in the loan, more of each payment goes to principal as the balance decreases
-                </li>
-              </ul>
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full bg-white border border-gray-200">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="py-2 px-4 border-b border-r text-left">Month</th>
+                      <th className="py-2 px-4 border-b border-r text-right">Interest</th>
+                      <th className="py-2 px-4 border-b border-r text-right">Principal</th>
+                      <th className="py-2 px-4 border-b text-right">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="bg-gray-50">
+                      <td className="py-2 px-4 border-b border-r font-medium">Start</td>
+                      <td className="py-2 px-4 border-b border-r text-right">-</td>
+                      <td className="py-2 px-4 border-b border-r text-right">-</td>
+                      <td className="py-2 px-4 border-b text-right">
+                        <input
+                          type="text"
+                          className={`w-full py-1 px-2 text-right border rounded ${
+                            userCalculations.startBalance > 0 && Math.abs(userCalculations.startBalance - loanDetails.amount) < 1
+                              ? 'border-green-500' 
+                              : 'border-gray-300'
+                          }`}
+                          value={userCalculations.startBalance || ''}
+                          placeholder="Enter initial balance"
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                              setUserCalculations(prev => ({
+                                ...prev,
+                                startBalance: value === '' ? 0 : parseFloat(value)
+                              }));
+                            }
+                          }}
+                        />
+                      </td>
+                    </tr>
+                    
+                    {userCalculations.amortizationTable.map((row, index) => {
+                      return (
+                        <tr 
+                          key={row.month} 
+                          className={`${row.isCalculated ? 'bg-green-50' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                        >
+                          <td className="py-2 px-4 border-b border-r font-medium">{row.month}</td>
+                          
+                          {/* Interest Cell */}
+                          <td className="py-2 px-4 border-b border-r text-right">
+                            <input
+                              type="text"
+                              className={`w-full py-1 px-2 text-right border rounded ${
+                                row.interest > 0 && validateTableCell(row.month, 'interest', row.interest.toString()) 
+                                  ? 'border-green-500' 
+                                  : 'border-gray-300'
+                              }`}
+                              value={row.interest || ''}
+                              placeholder="Enter interest"
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                                  handleCellValueChange(
+                                    row.month, 
+                                    'interest', 
+                                    value
+                                  );
+                                }
+                              }}
+                            />
+                          </td>
+                          
+                          {/* Principal Cell */}
+                          <td className="py-2 px-4 border-b border-r text-right">
+                            <input
+                              type="text"
+                              className={`w-full py-1 px-2 text-right border rounded ${
+                                row.principal > 0 && validateTableCell(row.month, 'principal', row.principal.toString()) 
+                                  ? 'border-green-500' 
+                                  : 'border-gray-300'
+                              }`}
+                              value={row.principal || ''}
+                              placeholder="Enter principal"
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                                  handleCellValueChange(
+                                    row.month, 
+                                    'principal', 
+                                    value
+                                  );
+                                }
+                              }}
+                            />
+                          </td>
+                          
+                          {/* Balance Cell */}
+                          <td className="py-2 px-4 border-b text-right">
+                            <input
+                              type="text"
+                              className={`w-full py-1 px-2 text-right border rounded ${
+                                row.balance > 0 && validateTableCell(row.month, 'balance', row.balance.toString()) 
+                                  ? 'border-green-500' 
+                                  : 'border-gray-300'
+                              }`}
+                              value={row.balance || ''}
+                              placeholder="Enter balance"
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                                  handleCellValueChange(
+                                    row.month, 
+                                    'balance', 
+                                    value
+                                  );
+                                }
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Instructions for table */}
+              <div className="mt-3 text-xs text-gray-600">
+                <p>Enter your calculated values in each box. Boxes will turn green when correctly calculated.</p>
+                <p>Note: For simplicity, we're using dollar values rounded to the nearest dollar.</p>
+              </div>
+              
+              {/* Insights box - shows when all calculations are complete */}
+              {completedCalculations.amortizationTable && (
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="font-bold mb-2">Key Insights from Your Analysis</h4>
+                  <ul className="list-disc pl-5 space-y-2 text-sm">
+                    <li><span className="font-medium">Interest vs. Principal Shift:</span> In month 1, approximately 15% of your payment goes to principal and 85% to interest. By month 48, nearly 99% goes to principal.</li>
+                    <li><span className="font-medium">Total Interest Paid:</span> Over the life of this loan, you pay approximately {formatCurrency(loanDetails.payment * loanDetails.term - loanDetails.amount)} in interest.</li>
+                    <li><span className="font-medium">Faster Equity Building:</span> Notice how the balance decreases more quickly in later months as more of each payment is applied to the principal.</li>
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-
-        <div className={`fixed lg:relative bottom-0 left-0 right-0 lg:bottom-auto lg:left-auto lg:right-auto bg-white shadow-md lg:shadow-none z-10 ${
-          isChatOpen ? 'h-[400px] lg:h-auto lg:flex-1' : 'h-12'
-        } transition-all duration-300`}>
-          <div 
-            className="bg-blue-700 text-white py-3 px-4 flex justify-between items-center cursor-pointer"
-            onClick={toggleChat}
-          >
-            <h3 className="font-bold">Finance Assistant</h3>
-            <button className="focus:outline-none">
-              {isChatOpen ? '▼' : '▲'}
-            </button>
-          </div>
-          
-          {isChatOpen && (
-            <div className="h-[calc(100%-48px)] lg:h-[calc(100vh-48px)] overflow-hidden">
-              <Chat
-                messages={messages}
-                disabled={isLoading}
-                promptValue={promptValue}
-                setPromptValue={setPromptValue}
-                setMessages={setMessages}
-                handleChat={handleChat}
-                topic="Amortization Analysis"
-              />
-            </div>
-          )}
         </div>
       </div>
-    </div>
+    );
+  };
+  
+  return (
+    <AutoLayout
+      title="Car Loan Amortization Analysis"
+      description="Calculate and understand how auto loan payments are divided between principal and interest over time."
+      scenario={scenarioText}
+      initialMessages={initialMessages}
+      topic="Auto Financing - Amortization"
+    >
+      <div className="space-y-6">
+        <LoanDetailsSection />
+      </div>
+    </AutoLayout>
   );
 }
