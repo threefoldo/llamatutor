@@ -41,11 +41,47 @@ interface UserCalculations {
   totalInterest?: number;
   startBalance: number;
   amortizationTable: AmortizationRow[];
+  selectedPaymentData?: {
+    principal?: number;
+    interest?: number;
+    remainingBalance?: number;
+  };
 }
 
 export default function AmortizationAnalysis() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // State for question-related functionality
+  const [questionType, setQuestionType] = useState<'principal' | 'interest' | 'remaining'>('principal');
+  const [questionPayment, setQuestionPayment] = useState<number | null>(null);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<number | null>(null);
+  const [correctAnswers, setCorrectAnswers] = useState({
+    principal: 0,
+    interest: 0,
+    remaining: 0,
+    loanAmount: 0,
+    totalInterest: 0,
+    interestToLoanRatio: 0
+  });
+  const [paymentSchedule, setPaymentSchedule] = useState<PaymentScheduleRow[]>([]);
+  const [loanOffer, setLoanOffer] = useState<LoanOffer>({
+    id: "civic",
+    vehicle: "Honda Civic",
+    price: 25000,
+    apr: 4,
+    term: 48,
+    downPayment: 5000,
+    image: "/imgs/honda_civic.jpg",
+    additionalFees: {
+      docFee: 150,
+      taxRate: 6,
+      titleFee: 100,
+      registrationFee: 250
+    }
+  });
   
   // Loan details (fixed for this exercise)
   const loanDetails = {
@@ -108,7 +144,12 @@ export default function AmortizationAnalysis() {
     monthlyPayment: undefined,
     totalInterest: undefined,
     startBalance: 0,
-    amortizationTable: initializeAmortizationTable()
+    amortizationTable: initializeAmortizationTable(),
+    selectedPaymentData: {
+      principal: undefined,
+      interest: undefined,
+      remainingBalance: undefined
+    }
   });
   
   // Display states
@@ -117,7 +158,10 @@ export default function AmortizationAnalysis() {
   // Track completion status for each calculation
   const [completedCalculations, setCompletedCalculations] = useState({
     monthlyPayment: false,
-    amortizationTable: false
+    amortizationTable: false,
+    loanAmount: false,
+    totalInterest: false,
+    interestToLoanRatio: false
   });
   
   // User progress trackers
@@ -368,7 +412,7 @@ const calculatePaymentForOffer = (offer: LoanOffer) => {
     if (isNaN(userValue)) return;
     
     let correctAnswer: number = 0;
-    let fieldToUpdate: keyof UserCalculations['selectedPaymentData'] = 'remainingBalance';
+    let fieldToUpdate: 'principal' | 'interest' | 'remainingBalance' = 'remainingBalance';
     
     switch (questionType) {
       case 'principal':

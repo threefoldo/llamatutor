@@ -138,7 +138,7 @@ export default function AutoLayout({
               className="text-blue-800 bg-white hover:bg-gray-100 px-4 py-2 rounded-md transition"
             >
               Task Details
-            </button>
+            </button> 
           
           {/* Expandable Scenario Container */}
           {isScenarioExpanded && (
